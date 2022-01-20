@@ -2,6 +2,7 @@
 import os
 import socketserver
 
+# Copyright 2022 Michelle Aubin
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,15 +37,22 @@ class MyWebServer(socketserver.BaseRequestHandler):
     def handle(self):
         self.data = self.request.recv(1024).strip()
         self.data = self.data.decode().split('\r\n')
-        http_request = self.validate_http_request(self.data[0])
-        print(self.data)
-        path = None
+        method, path, _ = self.data[0].split()
 
-        if http_request:
-            path = self.validate_path(http_request[1])
+        if method != "GET":
+            self.send_error(405)
+            return
 
-        if path:
-            pass
+        if '../' in path:
+            self.send_error(404)
+            return
+
+        if os.path.isfile(ROOT + path):
+            self.serve_file(ROOT + path)
+        elif os.path.isdir(ROOT + path):
+            self.serve_dir(path)
+        else:
+            self.send_error(404)
 
     def send_data(self, msg, content):
         msg += content
@@ -55,14 +63,22 @@ class MyWebServer(socketserver.BaseRequestHandler):
             content = "Not Found"
         elif code == 405:
             content = "Method Not Allowed"
-        elif code == 400:
-            content = "Bad Request"
 
         msg = f"HTTP/1.1 {code} {content}\r\nContent-Type: text/html\r\nContent-Length: {len(content)}\r\n\r\n"
         self.send_data(msg, content)
 
     def serve_dir(self, path):
-        index_path = os.path.join(path, 'index.html')
+        if path[-1] != "/":
+            for d in self.data:
+                if d[:6] == 'Host: ':
+                    host = d[6:]
+                    break
+            
+            content = "Moved Permanently"
+            msg = f"HTTP/1.1 301 {content}\r\nLocation: http://{host}{path}/\r\nContent-Type: text/html\r\nContent-Length: {len(content)}\r\n\r\n"
+            self.send_data(msg, content)
+
+        index_path = os.path.join(ROOT + path, 'index.html')
         if os.path.exists(index_path):
             self.serve_file(index_path)
         else:
@@ -76,31 +92,9 @@ class MyWebServer(socketserver.BaseRequestHandler):
         if ext == '.html':
             msg = f"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {len(content)}\r\n\r\n"
             self.send_data(msg, content)
-
-    def validate_http_request(self, http_request):
-        http_request = http_request.split()
-
-        if len(http_request) != 3:
-            self.send_error(404)
-            return None
-        elif http_request[0] != "GET":
-            self.send_error(405)
-            return None
-        else:
-            return http_request
-
-    def validate_path(self, path):
-        path = os.path.join(ROOT, path)
-
-        if '../' in path or not os.path.exists(path):
-            self.send_error(404)
-            return
-
-        if os.path.isdir(path):
-            self.serve_dir(path)
-        elif os.path.isfile(path):
-            self.serve_file(path)
-
+        elif ext == '.css':
+            msg = f"HTTP/1.1 200 OK\r\nContent-Type: text/css\r\nContent-Length: {len(content)}\r\n\r\n"
+            self.send_data(msg, content)
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
