@@ -64,7 +64,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
         elif code == 405:
             content = "Method Not Allowed"
 
-        msg = f"HTTP/1.1 {code} {content}\r\nContent-Type: text/html\r\nContent-Length: {len(content)}\r\n\r\n"
+        msg = f"HTTP/1.1 {code} {content}\r\nServer: mich-server\r\nContent-Type: text/html\r\nContent-Length: {len(content.encode())}\r\n\r\n"
         self.send_data(msg, content)
 
     def serve_dir(self, path):
@@ -75,7 +75,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
                     break
             
             content = "Moved Permanently"
-            msg = f"HTTP/1.1 301 {content}\r\nLocation: http://{host}{path}/\r\nContent-Type: text/html\r\nContent-Length: {len(content)}\r\n\r\n"
+            msg = f"HTTP/1.1 301 {content}\r\nLocation: http://{host}{path}/\r\nServer: mich-server\r\nContent-Type: text/html\r\nContent-Length: {len(content.encode())}\r\n\r\n"
             self.send_data(msg, content)
 
         index_path = os.path.join(ROOT + path, 'index.html')
@@ -90,10 +90,10 @@ class MyWebServer(socketserver.BaseRequestHandler):
             content = f.read()
 
         if ext == '.html':
-            msg = f"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {len(content)}\r\n\r\n"
+            msg = f"HTTP/1.1 200 OK\r\nServer: mich-server\r\nContent-Type: text/html\r\nContent-Length: {len(content.encode())}\r\n\r\n"
             self.send_data(msg, content)
         elif ext == '.css':
-            msg = f"HTTP/1.1 200 OK\r\nContent-Type: text/css\r\nContent-Length: {len(content)}\r\n\r\n"
+            msg = f"HTTP/1.1 200 OK\r\nServer: mich-server\r\nContent-Type: text/css\r\nContent-Length: {len(content.encode())}\r\n\r\n"
             self.send_data(msg, content)
 
 if __name__ == "__main__":
